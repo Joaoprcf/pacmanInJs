@@ -1,0 +1,17 @@
+venv
+
+*.py
+
+node_modules
+
+data
+
+requirements.txt
+
+*.md
+
+LICENSE
+
+Dockerfile
+
+__pycache__
