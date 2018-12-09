@@ -65,10 +65,12 @@ test('array toGhostMap', () => {
 
     expect([ [ [0,0], true, 1] ].toGhostMap()).toEqual({ '0,0': 1 })
     expect([
+        [[0,0],false,0],
         [[0,0],true,1],
         [[1,0],false,0],
         [[0,1],true,2]
-    ].toGhostMap()).toEqual({ '0,0': 1 , '1,0': 0, '0,1': 2 })
+        
+    ].toGhostMap()).toEqual({ '0,0': 0 , '1,0': 0, '0,1': 2 })
     
 })
 

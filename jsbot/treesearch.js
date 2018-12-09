@@ -1,95 +1,11 @@
-
+const {
+    Node,
+    FastNode,
+    FastNodeSize
+} = require('./nodes')
 
 //const this.ghmoves = 4
 
-class Node {
-    constructor(state, parent, size = 1, rw = 0 , lastmove = [0,0],boost = false) {
-        this.state = state
-        this.parent = parent 
-        this.size = size
-        this.rw = rw
-        this.boost = boost
-        this.blocked = [lastmove[0]*-1, lastmove[1]*-1]
-           
-    }
-    contains(pos) {
-        let node = this;
-        while(node!=null) {
-            if(node.state.equal(pos)) return true;
-            node=node.parent;
-        }
-        return false;
-    }
-
-    get path() {
-        let path = []
-        let node = this;
-        while(node!=null) {
-            path = [node.state].concat(path)
-            node=node.parent;
-        }
-        return path;
-    }
-}
-class FastNode {
-    constructor(state, parent) {
-        this.state = state
-        this.parent = parent 
-    }
-    layers(timeout,ghmoves) {
-        let max = 1;
-        let path = []
-        let node = this.parent;
-        while(node.parent!=null && max<ghmoves+1) {
-            path.push([node.state,timeout-max ] )
-            node=node.parent;
-            max++;
-        }
-        while(max < ghmoves+1) {
-            path.push([node.state,timeout-max ])
-            max++;
-        }
-        return path;
-    }
-    get pathlen() {
-        let node = this;
-        let size = 0;
-        while(node.parent!=null) {
-            size ++;
-            node=node.parent;
-        }
-        return size;
-    }
-}
-
-
-class FastNodeSize {
-    constructor(state, parent, size = 0, boost = '') {
-        this.state = state;
-        this.parent = parent; 
-        this.size = size;
-        this.boost = boost
-    }
-    get pathlen() {
-        let node = this;
-        let size = 0;
-        while(node.parent!=null) {
-            size ++;
-            node=node.parent;
-        }
-        return size;
-    }
-
-    get path() {
-        let path = []
-        let node = this;
-        while(node!=null) {
-            path = [node.state].concat(path)
-            node=node.parent;
-        }
-        return path;
-    }
-}
 
 function createForbidenPath(path,forbiden) {
     //console.log(path)
@@ -105,18 +21,61 @@ function createForbidenPath(path,forbiden) {
 
 
 class TreeSearch {
-    constructor(board,{ boost, ghosts ,ghostlist, lastghostmoves, level  }) {
+    constructor(board,{ boost, ghosts ,ghostlist, lastghostmoves, level, step , ghostarr  }) {
         this.board = board
         this.energy = this.board.energy
         this.ghosts = ghosts
         this.ghostlist = ghostlist
+        
+        this.step = step
         this.level = level ? level : 1
         this.ghmoves = level ? 2<<level : 4;  //ghost predict
         this.nghost = this.ghostlist.length
         this.freemoves = lastghostmoves ? lastghostmoves : Array(this.nghost).fill(0).map(m => [0,0]);
         this.boost = boost  
         this.glayers = Array(this.ghmoves).fill(0).map(m => ({}))
+        this.ghostpaths = Array(this.nghost).fill(0).map(m => [])
+        //console.log('ghostarr',ghostarr)
+        this.ghostarr = ghostarr
     }
+
+
+    ghostprediction(initial) {
+        let starttest = Number(new Date())
+        console.log('time left',deadline-starttest)
+        let nodes = [new PredictionNode(initial,null,0,this.ghostlist.map(gp => [gp,this.ghosts[gp]]),this.freemoves)] 
+        const br = this.board
+        const boostmap = br.boostmap;
+        const visited = new Set([initial.toS()])
+        const energy = this.energy;
+        const ghosts = this.ghosts;
+        const glayers = this.glayers;
+        let bestpath = nodes[0]
+        let actions = [[1,0],[-1,0],[0,-1],[0,1]]
+        while(nodes.length>0) {
+            let node = nodes.shift()
+            let currentPrediction = node.ghosts;
+            if(Number(new Date()) > deadline) {
+                break;
+            }            
+            actions.forEach(p => {
+                let newpos = br.pos[node.state.toS()+','+p.toS()]
+                let newposS = newpos.toS()
+                const newsize = node.size+1;
+
+                if(!visited.has(newposS) && !(newposS in ghostmap && ghostmap[newposS]<=0)) {                   
+                    let newnode = new PredictionNode(newpos,node,newsize )  // p.toS(),false)  //not done
+                    nodes.push(newnode)
+                    visited.add(newposS)
+                }
+            })
+            
+        }
+        
+        return { path: bestpath.path, clear: 0 }
+    }
+
+
 
     updateGlayers(forbiden) {
         let glayers = this.glayers;
@@ -207,8 +166,10 @@ class TreeSearch {
 
     updateghostlayer(initial) {  //call number 0
         let start = Number(new Date())
-        let nodes = [new FastNode(initial,null)] 
-        let visited = new Set([initial.toS()])
+        let initialnode = new FastNode(initial,null)
+        let nodes = [initialnode] 
+        const visited = {} 
+        visited[initial.toS()] = initialnode;  
         const br = this.board
         let ghosts = this.ghosts;
         let ghostlist = this.ghostlist;
@@ -216,34 +177,46 @@ class TreeSearch {
         let layers = []
         let actions = [[1,0],[-1,0],[0,-1],[0,1]]
         let dist=[]
+        let excludedghosts = []
         while(nodes.length>0) {
             let node = nodes.shift()
 
-            if(Number(new Date()) - start > 3) {
+            if(Number(new Date()) - start > 4) {
                 console.log('no time')
                 break;  
             }
             if(node.state in ghosts) {
-                
-                let protectedmoves = new Set(
-                                            ghostlist
-                                             .map((g,i) => [g,freemoves[i]])
-                                             .filter(g => g[0].equal(node.state))
-                                             .map(g => g[1].toS())
-                                            )
-                
-                start = Number(new Date())
-                let ghostnextmove = node.parent== null ? '--' : node.parent.state.sub(node.state).toS();
-                if(this.level == 0 || protectedmoves.size>1 || !protectedmoves.has(ghostnextmove)) {
-                    layers.push(node.layers(ghosts[node.state],this.ghmoves));                    
-                }
-                else {
-                    layers.push([[node.state,ghosts[node.state]]])
-                    console.log('not afraid of ghost movement')
-                }
-                start = Number(new Date())
 
-                dist = dist.concat( this.ghostlist.filter(g => node.state.equal(g)).map(g => node.pathlen) )
+                let pathlen = node.pathlen;
+                let ghostnextmove = node.parent== null ? '--' : node.parent.state.sub(node.state).toS();
+
+                let indexes = ghostlist
+                            .map((g,i) => [g,freemoves[i],i])
+                
+                let notrestricted = indexes 
+                    .filter(g => this.level==0 || pathlen<=2 || (g[0].equal(node.state) && freemoves[g[2]].toS()!=ghostnextmove))
+                
+                let restricted = indexes 
+                    .filter(g => this.level!=0 && pathlen>2 && g[0].equal(node.state) && freemoves[g[2]].toS()==ghostnextmove)
+
+                     
+                start = Number(new Date())
+                                
+                notrestricted.forEach(nres=>{
+                    if(!excludedghosts.includes(nres[2]))  {  //check for repeated indexes 
+                        excludedghosts.push(nres[2])
+                        this.ghostpaths[nres[2]] = node.invertedpath
+                        layers.push(node.layers(ghosts[node.state],this.ghmoves));
+                        dist.push(pathlen) 
+                    }                   
+                })              
+                
+                if(restricted.length>0) {
+                    
+                    console.log('not afraid of ghost movement')
+                    node.delete = true
+                }
+                start = Number(new Date())
                 
                 
             }
@@ -253,15 +226,16 @@ class TreeSearch {
                 
                 let newpos = br.pos[node.state.toS()+','+p.toS()]
                 let newposS = newpos.toS()
-                if(!visited.has(newposS)) {
-
-                    nodes.push(new FastNode(newpos,node))
-                    visited.add(newposS)
+                if(!(newposS in visited)) {
+                    nodes.push(new FastNode(newpos,node));
+                    visited[newposS] = node;
                 }
             })    
+            if(node.delete)
+                delete visited[node.state.toS()]
         }
+        this.newglayers = visited
         let result = Array(this.ghmoves).fill(0).map(m => ({}))
-        //console.log(result)
         layers.forEach(layer => {
             layer.forEach((a,i) => {
                 result[i][a[0].toS()] = a[1]
@@ -272,8 +246,8 @@ class TreeSearch {
         for(let i =1;i<result.length;i++) {
             result[i] = {...result[i], ...result[i-1] }    
         }
-        console.log(dist)
         this.glayers = result;
+        
         return dist.concat(
                 Array(this.nghost-dist.length).fill((br.width+br.height)>>1) 
                 );
@@ -303,7 +277,7 @@ class TreeSearch {
                 let newposS = newpos.toS()
                 const newsize = node.size+1;
 
-                let ghostmap = newsize<=this.ghmoves ? this.glayers[newsize] : this.glayers[this.ghmoves] 
+                let ghostmap = newsize<=this.ghmoves ? glayers[newsize] : glayers[this.ghmoves] 
                  
                 if(!visited.has(newposS) && !(newposS in ghostmap && ghostmap[newposS]<=0)) {
                     let rw = 0;
@@ -324,7 +298,8 @@ class TreeSearch {
             
         }
         return { path: bestpath.path, clear: 0 }
-    }
+    }    
+
 
     search(initial, prev = [0,0],deadline,dist,ghostbait) {
         
@@ -333,7 +308,7 @@ class TreeSearch {
         let nodes = [new Node(initial,null,1,0,prev,false)] 
         let visited = new Set([initial.toS()])
         let enought = 8*4-(initial in ghostbait ? ghostbait[initial] : 0)
-        console.log(enought)
+        //console.log(enought)
         const br = this.board
         const boostmap = br.boostmap;
         const energy = this.energy;

@@ -116,11 +116,10 @@ class Brain {
         return {
             cmd: 'key',
             key: keyToPlay,
-            path: Object.keys(ts.glayers[8]).map(i=>i.toArray()) //this.board.path //Object.keys(ts.glayers[3]).map(p=> p.split(',').map(p => Number(p)))
+            path: Object.keys(ts.glayers[4]).map(i=>i.toArray()) //this.board.path //Object.keys(ts.glayers[3]).map(p=> p.split(',').map(p => Number(p)))
         }
     }
 }
-
 
 
 

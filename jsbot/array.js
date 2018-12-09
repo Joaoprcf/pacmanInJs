@@ -28,7 +28,7 @@ Array.prototype.sub = function(array) {
 
 Array.prototype.toMap = function() {
     let result = {}
-    this.forEach(e => {
+    this.forEach(e => { 
         result[e.toS()] = e
     })
     return result
@@ -45,10 +45,15 @@ Array.prototype.toMapOfOnes = function() {
 Array.prototype.toGhostMap = function() {
     let result = {}
     this.forEach(g => {
-        result[g[0].toS()] = g[2]
+        if(g[0] in result) 
+            result[g[0].toS()] = Math.min(g[2],result[g[0].toS()])
+        else
+            result[g[0].toS()] = g[2]
     })
     return result
 }
+
+
 
 
 Array.prototype.toSpawnMap = function() {

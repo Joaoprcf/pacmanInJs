@@ -36,7 +36,7 @@ class Board {
         this.boost = data.filter(p => p[1]==BOOST).map(p => p[0])
         
 
-        let arr = Array(height).fill(0).map((harray,y) => Array(width).fill(0).map((warray,x) => [x,y] in this.walls ? 1 : 0) )
+        //let arr = Array(height).fill(0).map((harray,y) => Array(width).fill(0).map((warray,x) => [x,y] in this.walls ? 1 : 0) )
         
 
         //console.log(JSON.stringify(arr))  get map array
