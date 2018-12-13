@@ -52,6 +52,8 @@ class Board {
         }        
         this.gspawns = data.filter(p => p[1]==GSPAWN).toSpawnMap()
         
+        
+
         let st = new TreeSearch(this, {
             ghosts: {},
             boost: this.boost.toMap(),

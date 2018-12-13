@@ -1,14 +1,34 @@
+const debuglastboost = require("debug")('app:lastboost')
 const {
     Node,
     FastNode,
-    FastNodeSize
+    FastNodeSize,
+    PredictionNode
 } = require('./nodes')
 
 //const this.ghmoves = 4
 
 
+function calcboost(dist,level,lives,boosts,lastboost) {
+
+    const nghost = dist.length
+    const visibility = [2,4,8,8][level]
+
+    const closingvalue = dist.map(g => g>visibility ? 0 : (visibility*2-g+1)/(visibility*2)  ).reduce((a,b) => a + b,0)/nghost
+    
+    const greedlevel = [3,1.5,1,3][level]
+    const greedlives = [2,1.8,1.6][lives-1]
+    const greedboosts = [3,2.8,2.6,2.4][boosts-1]
+   
+    if(lastboost!='') return null;
+    return  greedlevel*greedboosts*greedlives*closingvalue-5.5;
+
+} 
+
+
+
 function createForbidenPath(path,forbiden) {
-    //console.log(path)
+
     for(let i=0,ii=path.length-1; i<Math.floor(path.length/2.0);i++,ii--) {
         forbiden[path[i].toS()] = path[i] in forbiden ? Math.min(forbiden[path[i]],i) : i
         forbiden[path[ii].toS()] = path[ii] in forbiden ?  Math.min(forbiden[path[ii]],i) : i
@@ -34,45 +54,158 @@ class TreeSearch {
         this.freemoves = lastghostmoves ? lastghostmoves : Array(this.nghost).fill(0).map(m => [0,0]);
         this.boost = boost  
         this.glayers = Array(this.ghmoves).fill(0).map(m => ({}))
-        this.ghostpaths = Array(this.nghost).fill(0).map(m => [])
-        //console.log('ghostarr',ghostarr)
+        this.ghostpath = Array(this.nghost).fill(0).map(m => [])
         this.ghostarr = ghostarr
+        
     }
 
 
-    ghostprediction(initial) {
+    ghostprediction(initial, deadline, lastboost) { //{ needtobait , boostarea  }) {
         let starttest = Number(new Date())
         console.log('time left',deadline-starttest)
-        let nodes = [new PredictionNode(initial,null,0,this.ghostlist.map(gp => [gp,this.ghosts[gp]]),this.freemoves)] 
+
+        if(Object.keys(this.ghosts).length==4)
+            console.log('ok')
+
+
+
+        let nodes = [new PredictionNode(
+                                        initial,            //state
+                                        null,               //parent
+                                        0,                  //size
+                                        this.ghostarr,      //ghosts
+                                        0,                  //rw
+                                        this.ghostpath,     //ghostspath
+                                        this.ghostarr.filter(g => g[1]<=0).map(g => g[0].toS())  //dangerarea
+                                        )
+                    ] 
+        
         const br = this.board
         const boostmap = br.boostmap;
+        
         const visited = new Set([initial.toS()])
+        
         const energy = this.energy;
-        const ghosts = this.ghosts;
-        const glayers = this.glayers;
+                    
+        const boostleft = Object.keys(this.boost).length
+        
+        console.log('START!!:')
+        const testreturn = []
         let bestpath = nodes[0]
         let actions = [[1,0],[-1,0],[0,-1],[0,1]]
+        let count = [0,0]
         while(nodes.length>0) {
             let node = nodes.shift()
-            let currentPrediction = node.ghosts;
-            if(Number(new Date()) > deadline) {
+            let ghostpath = node.ghostspath;
+            if(Number(new Date()) > deadline) { //remove false
+                console.log('size',node.size)
                 break;
-            }            
+            }                    
+            
+                                              //need to verify surrounding area
             actions.forEach(p => {
                 let newpos = br.pos[node.state.toS()+','+p.toS()]
                 let newposS = newpos.toS()
                 const newsize = node.size+1;
+                count[1]++;
+   
+                if(!node.contains(newpos) && !(node.dangerArea.includes(newposS))) {                   
+                    //console.log('Entering',newposS)
+                    let newghostpaths = []
+                    
+                    for(let i=0; i<this.nghost ; i++) {
+                        //add non movment of ghosts
+                        let index = ghostpath[i].findIndex(g => newpos.equal(g))
+                        if(index==0) newghostpaths.push([newpos])
+                        else if(index!=-1)        //check if
+                            newghostpaths.push(ghostpath[i].filter((g,i) => i>0 && i<=index))       //closer to the enemy
+                        else {
+                            index = Math.min(...actions
+                                            .map(act => br.pos[newposS+','+act.toS()])                   //adjacent
+                                            .filter(g => !g.equal(newpos))                               //valid adjacent
+                                            .map(g => ghostpath[i].findIndex(gr => gr.equal(g)))  //findIndex
+                                            .filter(g => g!=-1)
+                                            ,ghostpath[i].length-1
+                                    )                                       //removeFalses   this remain at least one
+                            newghostpaths.push([...ghostpath[i].filter((g,I) => I>0 && I<=index) ,newpos ])
+                        } 
+                        if(node.ghosts[i].length==0)   //This piece of code needs to be really tested
+                            throw new Error('WHY??')
+                            
+                    }                   
+                    
+                
+                    let boost = newposS in this.boost
 
-                if(!visited.has(newposS) && !(newposS in ghostmap && ghostmap[newposS]<=0)) {                   
-                    let newnode = new PredictionNode(newpos,node,newsize )  // p.toS(),false)  //not done
-                    nodes.push(newnode)
-                    visited.add(newposS)
+                    let newghosts = node.ghosts
+                                    .map((g,i) => [newghostpaths.length>0 ? newghostpaths[i][0] : g[0], boost ? 30 : Math.max(g[1]-1,0) ])
+                  
+                    let dangerArea = newghosts.filter(g => g[1]<=0).map(g => g[0].toS())
+                    
+                  /*   console.log('ghosts',node.ghosts)
+                    console.log(newsize,'->',newpos,'From-to\n',ghostpath,'--',newghostpaths)
+                    console.log('After Enter danger area',dangerArea)
+                    console.log('FORMED PATH',this.ghostpath) */
+
+                    if(!(dangerArea.includes(newposS))) {
+                       let rw = 0
+                        
+                     
+                        //ADD LAST BOOST!!!
+
+                       newghostpaths.forEach((P,i) => rw+= newghosts[i][1]>0 && P.length==1 ? 500-newsize+10 : Math.max(0,8-P.length)*Math.max(0,8-P.length)*(boostleft>0 ? (lastboost=='' ? 1 : 0.2  ) : 0))
+                       
+                       
+                       if(boost) { 
+                            node.newpath = true
+                            let dist = newghostpaths.map(g=> g.length-1)
+                            let newrw = calcboost(dist,this.level,3,this.nghost,lastboost)  //need live variables
+                            rw += (newrw>0 ? 1 : -1)*Math.sqrt(Math.abs(newrw))*200
+                            //rw += (this.nghost*2 - newghostpaths.map(g=> g.length>5 ? g.length : Math.sqrt(g.length)).reduce((a,b) => a + b,0))*200
+                            if(lastboost!='')return;
+                       } 
+                       //console.log('path so far:',node.path)
+                      
+                       if(newposS in energy) {
+                           debuglastboost(boostmap[newposS][1],'==',lastboost)
+                           rw+= (20+(boostmap[newposS][1]==lastboost)*1000)/newsize
+                       } 
+                       //console.log(newghostpaths.map(g => g.length))   erro 10,16 para 6,16 :(...
+                       let newnode = new PredictionNode(
+                                                    newpos,                    //state
+                                                    node,                      //parent
+                                                    newsize,                   //size
+                                                    newghosts,                 //ghosts
+                                                    node.rw+rw,                //rw
+                                                    newghostpaths,             //ghostspath
+                                                    dangerArea                 //dangerArea
+                                                )  
+                        
+                        if(bestpath.rw + bestpath.size<=newnode.rw + newnode.size) bestpath = newnode
+                        count[0]++;
+                        nodes.push(newnode)                    
+                        visited.add(newposS)
+                        if(newsize==1){
+                            
+                            testreturn.push(newghosts.map(g => g[0]))
+                        }
+                            
+                       
+                    } else {
+                       // console.log('Ghost may kill you if you continue')
+                    }
+                    
+                    
+                                       
+
                 }
             })
             
         }
         
-        return { path: bestpath.path, clear: 0 }
+        console.log('count:',count)
+        console.log('MAXRW:',bestpath.rw)
+        return bestpath.path
     }
 
 
@@ -176,45 +309,60 @@ class TreeSearch {
         let freemoves = this.freemoves;
         let layers = []
         let actions = [[1,0],[-1,0],[0,-1],[0,1]]
-        let dist=[]
+        let dist=Array(this.nghost).fill(0)
         let excludedghosts = []
+        let notrestrictedcount = 0;
+        let restrictedcount = 0;
         while(nodes.length>0) {
             let node = nodes.shift()
 
-            if(Number(new Date()) - start > 4) {
+            if(Number(new Date()) - start > 10) {
                 console.log('no time')
                 break;  
             }
             if(node.state in ghosts) {
-
+                
                 let pathlen = node.pathlen;
+                if(pathlen==2) {
+                    console.log('break')
+                }
                 let ghostnextmove = node.parent== null ? '--' : node.parent.state.sub(node.state).toS();
 
                 let indexes = ghostlist
                             .map((g,i) => [g,freemoves[i],i])
                 
                 let notrestricted = indexes 
-                    .filter(g => this.level==0 || pathlen<=2 || (g[0].equal(node.state) && freemoves[g[2]].toS()!=ghostnextmove))
+                    .filter(g => (this.level==0 || pathlen<=2 || freemoves[g[2]].toS()!=ghostnextmove) && g[0].equal(node.state))
                 
                 let restricted = indexes 
-                    .filter(g => this.level!=0 && pathlen>2 && g[0].equal(node.state) && freemoves[g[2]].toS()==ghostnextmove)
+                    .filter(g => this.level!=0 && pathlen>2 && freemoves[g[2]].toS()==ghostnextmove && g[0].equal(node.state))
 
+                restrictedcount
                      
                 start = Number(new Date())
-                                
+                   
+                
+                restricted.forEach(res=>{
+                    if(!excludedghosts.includes(res[2]))  {  //in case of dead ends
+                        this.ghostpath[res[2]] = node.invertedpath
+                        dist[res[2]] = pathlen 
+                        node.delete = true
+                        restrictedcount++;
+                    }                   
+                })         
+
                 notrestricted.forEach(nres=>{
                     if(!excludedghosts.includes(nres[2]))  {  //check for repeated indexes 
                         excludedghosts.push(nres[2])
-                        this.ghostpaths[nres[2]] = node.invertedpath
+                        this.ghostpath[nres[2]] = node.invertedpath
                         layers.push(node.layers(ghosts[node.state],this.ghmoves));
-                        dist.push(pathlen) 
+                        dist[nres[2]] = pathlen 
+                        notrestrictedcount++;
                     }                   
                 })              
-                
+    
                 if(restricted.length>0) {
-                    
                     console.log('not afraid of ghost movement')
-                    node.delete = true
                 }
                 start = Number(new Date())
                 
@@ -247,108 +395,10 @@ class TreeSearch {
             result[i] = {...result[i], ...result[i-1] }    
         }
         this.glayers = result;
+        //console.log('this.path',this.ghostpath)
+        //if(notrestrictedcount!=this.nghost) throw new Error('Problem found '+restrictedcount)
         
-        return dist.concat(
-                Array(this.nghost-dist.length).fill((br.width+br.height)>>1) 
-                );
-    }
-
-    foodsearch(initial, prev = [0,0], deadline,boost) {
-        let nodes = [new Node(initial,null,1,0,prev,false)] 
-        let visited = new Set([initial.toS()])
-        const br = this.board
-        const boostmap = br.boostmap;
-        const energy = this.energy;
-        const ghosts = this.ghosts;
-        const glayers = this.glayers;
-
-        let bestpath = nodes[0]
-        let actions = [[1,0],[-1,0],[0,-1],[0,1]]
-        while(nodes.length>0) {
-            
-            let node = nodes.shift()
-            if(Number(new Date()) > deadline) {
-                break;
-            }
-                              
-            actions.forEach(p => {
-                
-                let newpos = br.pos[node.state.toS()+','+p.toS()]
-                let newposS = newpos.toS()
-                const newsize = node.size+1;
-
-                let ghostmap = newsize<=this.ghmoves ? glayers[newsize] : glayers[this.ghmoves] 
-                 
-                if(!visited.has(newposS) && !(newposS in ghostmap && ghostmap[newposS]<=0)) {
-                    let rw = 0;
-                    if(newposS in ghosts && ghosts[newposS]>newsize){
-                        rw = 1000
-                    }
-                    else if(newposS in energy){
-                        rw = boostmap[newposS][1] == boost ? 5 : 1;
-                    }
-
-                    let newnode = new Node(newpos,node,newsize,rw, p.toS(),false)
-                    if(rw>bestpath.rw)
-                        bestpath = newnode
-                    nodes.push(newnode)
-                    visited.add(newposS)
-                }
-            })
-            
-        }
-        return { path: bestpath.path, clear: 0 }
-    }    
-
-
-    search(initial, prev = [0,0],deadline,dist,ghostbait) {
-        
-        let starttest = Number(new Date())
-        console.log('time left',deadline-starttest)
-        let nodes = [new Node(initial,null,1,0,prev,false)] 
-        let visited = new Set([initial.toS()])
-        let enought = 8*4-(initial in ghostbait ? ghostbait[initial] : 0)
-        //console.log(enought)
-        const br = this.board
-        const boostmap = br.boostmap;
-        const energy = this.energy;
-        const ghosts = this.ghosts;
-        const glayers = this.glayers;
-
-        let bestpath = nodes[0]
-        let actions = [[1,0],[-1,0],[0,-1],[0,1]]
-        while(nodes.length>0) {
-            
-            let node = nodes.shift()
-            if(Number(new Date()) > deadline) {
-                break;
-            }
-                              
-            actions.forEach(p => {
-                let newpos = br.pos[node.state.toS()+','+p.toS()]
-                let newposS = newpos.toS()
-                const newsize = node.size+1;
-
-                let ghostmap = newsize<=this.ghmoves ? this.glayers[newsize] : this.glayers[this.ghmoves] 
-                 
-                if(!visited.has(newposS) && !(newposS in ghostmap && ghostmap[newposS]<=0)) {
-                    let rw = newposS in ghostbait ? ghostbait[newposS] : 0;
-                    let boostinfo = boostmap[newposS]
-                    if(boostinfo[1] in this.boost && ghostbait[newposS]>enought)
-                        rw *= 4+boostinfo[0]
-                    
-                   
-                    let newnode = new Node(newpos,node,newsize,rw, p.toS(),false)
-                    if(rw>bestpath.rw)
-                        bestpath = newnode
-                    nodes.push(newnode)
-                    visited.add(newposS)
-                }
-            })
-            
-        }
-        
-        return { path: bestpath.path, clear: 0 }
+        return dist.map(g => g==0 ? br.width+br.height : g)
     }
 
 }        

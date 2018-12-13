@@ -42,4 +42,4 @@ client.on('connect', function(connection) {
 
  
 //client.connect('ws://pacman-aulas.ws.atnog.av.it.pt:80/player');
-client.connect('ws://localhost:8000/player');
+client.connect('ws://127.0.0.1:8000/player');

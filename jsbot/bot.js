@@ -1,4 +1,4 @@
-
+const debuglastboost = require("debug")('app:lastboost')
 const TreeSearch = require("./treesearch");
 const Board = require('./map')
 const readline = require('readline');
@@ -51,15 +51,15 @@ class Brain {
 
 
     processNextMove(state) {
-        let limit = 40
+        let limit = 80
         let deadline = Number(new Date()) + limit
         let { energy, ghosts, boost, step, pacman, lives, player } = state
 
         delete this.board.energy[pacman.toS()];
-
         energy = energy.toMapOfOnes();
         boost = boost.toMap();
         let ghostlist = ghosts.map(i => i[0]);
+        let ghostarr = ghosts.map(i => [i[0], i[2]]);
         if(this.lastGhostState.length==0) {
             this.lastGhostState = [...ghostlist]
         }
@@ -68,42 +68,42 @@ class Brain {
 
         if(this.lastboost != '' && this.board.checkArea(energy,this.lastboost)) {
             this.lastboost = ''
-            console.log('Bait activated')
+            debuglastboost('Bait activated')
         }
-            
+        debuglastboost('=',this.lastboost)
         
         let ts = new TreeSearch(this.board, {
             boost,
             ghosts,
+            ghostarr,
             ghostlist,
             lastghostmoves,
             level: this.level
         });
+   
         let dist = ts.updateghostlayer(pacman)
-        let ghostbait = ts.ghostsurrondings() 
-
-        //human interation
-        let fastthink = this.clear - 1
-        let k = keypress;
-        if(k!=null) {
-            fastthink += isNaN(k[0]) ? 0 : Number(k[0])
-            console.log(fastthink)
-            if(keypress[1]==1) 
-                keypress = null;
-            else 
-                keypress = [keypress[0],keypress[1]-1]
-        } 
+        this.test = dist
+       
+        ts.ghostsurrondings() 
+        let path = ts.ghostprediction(pacman,deadline-5,this.lastboost)
+        //if(path.length==1) throw new Error('err')
 
         
+        let clear = 0;
+/* 
         let { path, clear } = this.lastboost=='' 
                     ? ts.search(pacman,this.lastmove ,deadline-5,dist,ghostbait) 
-                    : ts.foodsearch(pacman,this.lastmove,deadline-5,this.lastboost)
+                    : ts.foodsearch(pacman,this.lastmove,deadline-5,this.lastboost) */
             
         this.clear = clear;
         let next;
         try {
             next = [[1,0],[-1,0],[0,1],[0,-1]].find(a => this.board.nextpos(pacman,a).equal(path[1]))
-            if(path[1].toS() in boost) this.lastboost = path[1].toS()
+            if(path[1].toS() in boost) {
+               this.lastboost = path[1].toS() 
+               debuglastboost('updating last boost to',this.lastboost)
+               
+            } 
         } catch(ex) {
             next = [1,0] 
         }
@@ -116,7 +116,7 @@ class Brain {
         return {
             cmd: 'key',
             key: keyToPlay,
-            path: Object.keys(ts.glayers[4]).map(i=>i.toArray()) //this.board.path //Object.keys(ts.glayers[3]).map(p=> p.split(',').map(p => Number(p)))
+            path: path //ts.ghostpath[0].concat(ts.ghostpath[1]).concat(ts.ghostpath[2]).concat(ts.ghostpath[3]) //this.board.path //Object.keys(ts.glayers[3]).map(p=> p.split(',').map(p => Number(p)))
         }
     }
 }

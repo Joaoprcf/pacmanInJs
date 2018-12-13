@@ -97,12 +97,14 @@ class FastNodeSize {
 }
 
 class PredictionNode {
-    constructor(state, parent, size=0, ghosts, ghostblockedmove ) {
+    constructor(state, parent, size=0, ghosts, rw, ghostspath , dangerArea ) {
         this.state = state;
         this.parent = parent;
         this.size = size;
         this.ghosts = ghosts
-        this.ghostblockedmove = ghostblockedmove
+        this.rw = rw
+        this.ghostspath = ghostspath
+        this.dangerArea = dangerArea
     }
     get path() {
         let path = []
@@ -117,6 +119,7 @@ class PredictionNode {
         let node = this;
         while(node!=null) {
             if(node.state.equal(pos)) return true; 
+            //if(node.newpath) return false;
             node = node.parent
         }
         return false;
@@ -126,5 +129,6 @@ class PredictionNode {
 module.exports = {
     Node,
     FastNode,
-    FastNodeSize
+    FastNodeSize,
+    PredictionNode
 }

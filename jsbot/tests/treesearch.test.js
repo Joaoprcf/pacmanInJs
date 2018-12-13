@@ -48,26 +48,6 @@ test('tree search map1 funcionality 1 ghost', ()=> {
     ])
 
 
-    //new implementation
-
-    /* expect(st.glayers).toEqual({
-
-    '1,0':[ 
-        { '9,15': 0 },
-        { '8,15': -1, '9,15': 0 },
-        { '7,15': -2, '8,15': -1, '9,15': 0 },
-        { '6,15': -3, '7,15': -2, '8,15': -1 },
-        { '5,15': -4, '6,15': -3, '7,15': -2 } 
-    ],
-        
-    '-1,0':[ 
-        { '9,15': 0 },
-        { '8,15': -1, '9,15': 0 },
-        { '7,15': -2, '8,15': -1, '9,15': 0 },
-        { '6,15': -3, '7,15': -2, '8,15': -1 },
-        { '5,15': -4, '6,15': -3, '7,15': -2 } 
-    ]}) */
-
 
 
     let ghostbait = st.ghostsurrondings()
@@ -82,6 +62,30 @@ test('tree search map1 funcionality 1 ghost', ()=> {
 
 
 ///
+
+function premadefunc({ this_nghost = 4 , ghostpath , newpos }) {
+
+    let newghostpaths = []
+    let newposS = newpos.toS()
+    for(let i=0; i<this_nghost ; i++) {
+        //add non movment of ghosts
+        let index = ghostpath[i].findIndex(g => newpos.equal(g))
+        if(index==0) newghostpaths.push([newpos])
+        else if(index!=-1)        //check if
+            newghostpaths.push(ghostpath[i].filter((g,i) => i>0 && i<=index))       //closer to the enemy
+        else {
+            index = Math.min(...actions
+                            .map(act => br.pos[newposS+','+act.toS()])                   //adjacent
+                            .filter(g => !g.equal(newpos))                               //valid adjacent
+                            .map(g => ghostpath[i].findIndex(gr => gr.equal(g)))  //findIndex
+                            .filter(g => g!=-1)
+                            ,ghostpath[i].length-1
+                    )                                       //removeFalses   this remain at least one
+            newghostpaths.push([...ghostpath[i].filter((g,I) => I>0 && I<=index) ,newpos ])
+        } 
+        if(newghostpaths[i].length==0)   //This piece of code needs to be really tested
+                console.log('debug')
+}
 
 
 
@@ -113,25 +117,6 @@ test('tree search map1 funcionality 4 ghosts', ()=> {
         { '5,15': -4, '6,15': -3, '7,15': -2, '8,15': -1, '9,15': 0 } 
     ])
 
-    //new implementation
-
-    /* expect(st.glayers).toEqual({
-
-    '1,0':[ 
-        { '9,15': 0 },
-        { '8,15': -1, '9,15': 0 },
-        { '7,15': -2, '8,15': -1, '9,15': 0 },
-        { '6,15': -3, '7,15': -2, '8,15': -1 },
-        { '5,15': -4, '6,15': -3, '7,15': -2 } 
-    ],
-        
-    '-1,0':[ 
-        { '9,15': 0 },
-        { '8,15': -1, '9,15': 0 },
-        { '7,15': -2, '8,15': -1, '9,15': 0 },
-        { '6,15': -3, '7,15': -2, '8,15': -1 },
-        { '5,15': -4, '6,15': -3, '7,15': -2 } 
-    ]}) */
 
 
     let ghostbait = st.ghostsurrondings()
@@ -142,4 +127,9 @@ test('tree search map1 funcionality 4 ghosts', ()=> {
     expect(st.ghostlist).toEqual([[9,15],[9,15],[9,15],[9,15]])      //never destroy values
 
     expect(ghostbait['4,15']).toBe(16*4)
+})
+
+
+test('tree search specific function', ()=> { 
+    
 })
