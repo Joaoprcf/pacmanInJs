@@ -1,5 +1,5 @@
 {
-  "name": "trabalho-de-grupo-pacman-80272-80323-master",
+  "name": "pacman",
   "version": "1.0.0",
   "description": "Client-Server PACMAN clone",
   "main": "index.js",

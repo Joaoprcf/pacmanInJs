@@ -63,7 +63,7 @@ test('tree search map1 funcionality 1 ghost', ()=> {
 
 ///
 
-function premadefunc({ this_nghost = 4 , ghostpath , newpos }) {
+/* function premadefunc({ this_nghost = 4 , ghostpath , newpos }) {
 
     let newghostpaths = []
     let newposS = newpos.toS()
@@ -86,7 +86,7 @@ function premadefunc({ this_nghost = 4 , ghostpath , newpos }) {
         if(newghostpaths[i].length==0)   //This piece of code needs to be really tested
                 console.log('debug')
 }
-
+ */
 
 
 test('tree search map1 funcionality 4 ghosts', ()=> { 
