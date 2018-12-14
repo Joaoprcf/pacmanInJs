@@ -81,7 +81,7 @@ class TreeSearch {
 
     }
 
-    ghostprediction(initial, deadline, lastboost) { //{ needtobait , boostarea  }) {  //level 3 is different
+    ghostprediction(initial, deadline, lastboost) { //   AI function
         let starttest = Number(new Date())
         console.log('time left',deadline-starttest)
 
@@ -145,7 +145,7 @@ class TreeSearch {
                        
                         let index = ghostpath[i].findIndex(g => newpos.equal(g))
                         if(index==0) newghostpaths.push([newpos])
-                        else if(index!=-1)        //check if
+                        else if(index!=-1)       
                             newghostpaths.push(ghostpath[i].filter((g,I) => (I>0 || node.ghosts[i][1]>1 || g.length>12)  && I<=index))       //closer to the enemy
                         else {
                             index = Math.min(...actions
@@ -157,8 +157,7 @@ class TreeSearch {
                                     )                                       //removeFalses   this remain at least one
                             newghostpaths.push([...ghostpath[i].filter((g,I) => (I>0 || node.ghosts[i][1]>1 || g.length>12) && I<=index) ,newpos ])
                         } 
-                        if(node.ghosts[i].length==0)   //This piece of code needs to be really tested
-                            throw new Error('WHY??')
+    
                             
                     }                   
                     
@@ -184,19 +183,19 @@ class TreeSearch {
                        if(boost) { 
                             node.newpath = true
                             let dist = newghostpaths.map(g=> g.length-1)
-                            let newrw = calcboost(dist,this.level,this.lives,this.nghost,lastboost,this.step,this.laststep)  //need live variables
-                            //rw += (this.nghost*2 - newghostpaths.map(g=> g.length>5 ? g.length : Math.sqrt(g.length)).reduce((a,b) => a + b,0))*200
+                            let newrw = calcboost(dist,this.level,this.lives,this.nghost,lastboost,this.step,this.laststep)  
+                            
                             if(lastboost!='' || (!newrw && this.lives==3)) return
                             rw += newrw ? 1e5/(10+newsize) : -1e5/(10+newsize) 
 
                        } 
-                       //console.log('path so far:',node.path)
+                    
                       
                        if(newposS in energy) {
                            debuglastboost(boostmap[newposS][1],'==',lastboost)
                            rw+= (20+(boostmap[newposS][1]==lastboost)*1000)/newsize
                        } 
-                       //console.log(newghostpaths.map(g => g.length))   erro 10,16 para 6,16 :(...
+                     
                        let newnode = new PredictionNode(
                                                     newpos,                    //state
                                                     node,                      //parent
@@ -217,10 +216,7 @@ class TreeSearch {
                         }
                             
                        
-                    } else {
-                       // console.log('Ghost may kill you if you continue')
-                    }
-                    
+                    }                   
                     
                                        
 
