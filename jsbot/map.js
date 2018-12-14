@@ -34,22 +34,24 @@ class Board {
         this.walls = data.filter(p => p[1]==WALL).map(p => p[0]).toMap()
         let energy = data.filter(p => p[1]==ENERGY).map(p => p[0])
         this.boost = data.filter(p => p[1]==BOOST).map(p => p[0])
-        
-
-        //let arr = Array(height).fill(0).map((harray,y) => Array(width).fill(0).map((warray,x) => [x,y] in this.walls ? 1 : 0) )
-        
-
-        //console.log(JSON.stringify(arr))  get map array
+    
 
         this.energy = energy.toMapOfOnes()
         
         this.pos = {  }
+        this.badpositions = {}
         for (let i = 0; i< this.width; i++)  for (let j = 0; j< this.height; j++) {
+            let count = 0;
             [[1,0],[-1,0],[0,-1],[0,1]].forEach(p => {
-                this.pos[[i,j].toS()+','+p.toS()] = this.nextpos([i,j],p)
+                let nextpos = this.nextpos([i,j],p)
+                if(nextpos!=[i,j]) count++;
+                this.pos[[i,j].toS()+','+p.toS()] = nextpos
             })
             
         }        
+
+
+
         this.gspawns = data.filter(p => p[1]==GSPAWN) //.toSpawnMap()
         
         this.onespawn = this.gspawns[0][0]

@@ -33,12 +33,13 @@ class Brain {
         this.lives = state.lives;
         this.level = state.ghosts_level
         this.board = new Board(state.map); 
+        
         console.log('time to process:',Number(new Date() - checkpoint)+ ' ms')
     }
 
 
     processNextMove(state) {
-        let limit = 50
+        let limit = 65
         let deadline = Number(new Date()) + limit
         let { energy, ghosts, boost,pacman , step, lives, player } = state
 

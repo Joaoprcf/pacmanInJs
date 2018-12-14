@@ -11,18 +11,18 @@ const {
 
 function calcboost(dist,level,lives,boosts,lastboost,step,laststep) {
 
-    console.log('step',step,'laststep',laststep)
+    //console.log('step',step,'laststep',laststep)
 
 
     const nghost = dist.length
-    const visibility = [5,5,9,7][level]
+    const visibility = [5,6,8,7][level]
 
     const closingvalue = dist.map(g => g>visibility ? 0 : g!=visibility ? 1 : 0.5 ).reduce((a,b) => a + b,0)
     
 
     let greedlevel = [1.5,3,3.5,2][level]
     greedlevel = Math.max(1,greedlevel+(lives-3)/2)
-    greedlevel = Math.max(1,greedlevel-(step-laststep)/350)
+    greedlevel = Math.max(1,greedlevel-(step-laststep)/275)    //dont wait that
   
     if(lastboost!='') return null;
     console.log(closingvalue>= Math.min(greedlevel,nghost))
@@ -112,14 +112,14 @@ class TreeSearch {
         
         console.log('START!!:')
         const testreturn = []
-        let bestpath = { rw: -2e10, size: 1  }
+        let bestnode = { rw: -2e10, size: 1  }
         let actions = [[1,0],[-1,0],[0,-1],[0,1]]
         let count = [0,0]
         while(nodes.length>0) {
             let node = nodes.shift()
             let ghostpath = node.ghostspath;
-            if(Number(new Date()) > deadline) { //remove false
-                console.log('size',node.size)
+            if(Number(new Date()) > deadline) { 
+                //console.log('size',node.size)
                 break;
             }                    
             
@@ -177,7 +177,7 @@ class TreeSearch {
                      
                         //ADD LAST BOOST!!!
 
-                       newghostpaths.forEach((P,i) => rw+= newghosts[i][1]>0 && P.length==1 ? 500-newsize+10 : Math.max(0,8-P.length)*Math.max(0,8-P.length)*(boostleft>0 ? (lastboost=='' ? 1 : 0.2  ) : 0))
+                       newghostpaths.forEach((P,i) => rw+= (newghosts[i][1]>0 && P.length==1 ? 500-newsize+10 : Math.max(0,8-P.length)*Math.max(0,8-P.length)*(boostleft>0 ? (lastboost=='' ? 1 : 0.2  ) : 0))*15/(10+newsize)  )
                        
                        
                        if(boost) { 
@@ -206,7 +206,7 @@ class TreeSearch {
                                                     dangerArea                 //dangerArea
                                                 )  
                         
-                        if(bestpath.rw + bestpath.size<=newnode.rw + newnode.size || (bestpath.size<5 && newsize==5)) bestpath = newnode
+                        if(bestnode.rw + bestnode.size<=newnode.rw + newnode.size || (bestnode.size<5 && newsize==5)) bestnode = newnode
                         count[0]++;
                         nodes.push(newnode)                    
                         visited.add(newposS)
@@ -225,9 +225,9 @@ class TreeSearch {
             
         }
         
-        console.log('count:',count)
-        console.log('MAXRW:',bestpath.rw)
-        return bestpath.path
+/*         console.log('count:',count)
+        console.log('MAXRW:',bestnode.rw) */
+        return bestnode.path
     }
 
 
@@ -262,10 +262,6 @@ class TreeSearch {
         }
 
         console.log('boost took',Number(new Date())-start,'ms')
-        for(let b in boostmap) {
-            let arr = boostmap[b]
-            boostmap[b] = [newsize-arr[0],arr[1]]
-        }
         br.boostmap = boostmap
     }
 
