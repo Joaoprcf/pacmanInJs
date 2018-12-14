@@ -9,65 +9,86 @@ const {
 //const this.ghmoves = 4
 
 
-function calcboost(dist,level,lives,boosts,lastboost) {
+function calcboost(dist,level,lives,boosts,lastboost,step,laststep) {
+
+    console.log('step',step,'laststep',laststep)
+
 
     const nghost = dist.length
-    const visibility = [2,4,8,8][level]
+    const visibility = [5,5,9,7][level]
 
-    const closingvalue = dist.map(g => g>visibility ? 0 : (visibility*2-g+1)/(visibility*2)  ).reduce((a,b) => a + b,0)/nghost
+    const closingvalue = dist.map(g => g>visibility ? 0 : g!=visibility ? 1 : 0.5 ).reduce((a,b) => a + b,0)
     
-    const greedlevel = [3,1.5,1,3][level]
-    const greedlives = [2,1.8,1.6][lives-1]
-    const greedboosts = [3,2.8,2.6,2.4][boosts-1]
-   
+
+    let greedlevel = [1.5,3,3.5,2][level]
+    greedlevel = Math.max(1,greedlevel+(lives-3)/2)
+    greedlevel = Math.max(1,greedlevel-(step-laststep)/350)
+  
     if(lastboost!='') return null;
-    return  greedlevel*greedboosts*greedlives*closingvalue-5.5;
+    console.log(closingvalue>= Math.min(greedlevel,nghost))
+    return closingvalue>= Math.min(greedlevel,nghost);
 
 } 
 
 
 
-function createForbidenPath(path,forbiden) {
-
-    for(let i=0,ii=path.length-1; i<Math.floor(path.length/2.0);i++,ii--) {
-        forbiden[path[i].toS()] = path[i] in forbiden ? Math.min(forbiden[path[i]],i) : i
-        forbiden[path[ii].toS()] = path[ii] in forbiden ?  Math.min(forbiden[path[ii]],i) : i
-    }
-    if(path.length%2) {
-        let middle = Math.floor(path.length/2);
-        forbiden[path[middle].toS()] = path[middle] in forbiden ? forbiden[path[middle]]+middle : middle
-    }
-}
-
-
 class TreeSearch {
-    constructor(board,{ boost, ghosts ,ghostlist, lastghostmoves, level, step , ghostarr  }) {
+    constructor(board,{ boost, ghosts ,ghostlist, lastghostmoves, level, step , ghostarr , lives , laststep  }) {
         this.board = board
         this.energy = this.board.energy
         this.ghosts = ghosts
+        this.lives = lives
         this.ghostlist = ghostlist
-        
         this.step = step
+        this.laststep = laststep
         this.level = level ? level : 1
         this.ghmoves = level ? 2<<level : 4;  //ghost predict
         this.nghost = this.ghostlist.length
         this.freemoves = lastghostmoves ? lastghostmoves : Array(this.nghost).fill(0).map(m => [0,0]);
         this.boost = boost  
-        this.glayers = Array(this.ghmoves).fill(0).map(m => ({}))
         this.ghostpath = Array(this.nghost).fill(0).map(m => [])
         this.ghostarr = ghostarr
         
     }
 
+    ghostspam(initial) {
+        let start = Number(new Date())
+        let actions = [[1,0],[-1,0],[0,-1],[0,1]]
+        const br = this.board;
+        let nodes = [new FastNode(initial,null)]
+        let visited = new Set(initial)
+        let fullmap = {}
+        fullmap[initial.toS()] = nodes[0]
+        while(nodes.length>0) {
+            let node = nodes.shift()
+            actions.forEach(p => {
+                
+                let newpos = br.pos[node.state.toS()+','+p.toS()];
+                let newposS = newpos.toS();
+                if(!visited.has(newposS)) {
+                    let newnode = new FastNode(newpos,node);                          
+                    nodes.push(newnode);
+                    visited.add(newposS);
+                    fullmap[newposS] = newnode;
+                }
+            }) 
+        
+        }
 
-    ghostprediction(initial, deadline, lastboost) { //{ needtobait , boostarea  }) {
+        console.log('boost took',Number(new Date())-start,'ms')
+        return fullmap
+        
+
+    }
+
+    ghostprediction(initial, deadline, lastboost) { //{ needtobait , boostarea  }) {  //level 3 is different
         let starttest = Number(new Date())
         console.log('time left',deadline-starttest)
 
         if(Object.keys(this.ghosts).length==4)
             console.log('ok')
 
-
+        
 
         let nodes = [new PredictionNode(
                                         initial,            //state
@@ -91,7 +112,7 @@ class TreeSearch {
         
         console.log('START!!:')
         const testreturn = []
-        let bestpath = nodes[0]
+        let bestpath = { rw: -2e10, size: 1  }
         let actions = [[1,0],[-1,0],[0,-1],[0,1]]
         let count = [0,0]
         while(nodes.length>0) {
@@ -108,17 +129,24 @@ class TreeSearch {
                 let newposS = newpos.toS()
                 const newsize = node.size+1;
                 count[1]++;
+                let rw = 0
    
                 if(!node.contains(newpos) && !(node.dangerArea.includes(newposS))) {                   
-                    //console.log('Entering',newposS)
-                    let newghostpaths = []
                     
+                    let newghostpaths = []
+                    let renew = node.ghosts.map(g => false)
                     for(let i=0; i<this.nghost ; i++) {
-                        //add non movment of ghosts
+                        if(node.ghosts[i][1]>0 && node.ghosts[i][0].equal(newpos)) {
+                            newghostpaths.push(br.pathsfromSpam[newposS].path)
+                            rw+=10e4/newsize;
+                            renew[i] =true
+                            continue;
+                        } 
+                       
                         let index = ghostpath[i].findIndex(g => newpos.equal(g))
                         if(index==0) newghostpaths.push([newpos])
                         else if(index!=-1)        //check if
-                            newghostpaths.push(ghostpath[i].filter((g,i) => i>0 && i<=index))       //closer to the enemy
+                            newghostpaths.push(ghostpath[i].filter((g,I) => (I>0 || node.ghosts[i][1]>1 || g.length>12)  && I<=index))       //closer to the enemy
                         else {
                             index = Math.min(...actions
                                             .map(act => br.pos[newposS+','+act.toS()])                   //adjacent
@@ -127,7 +155,7 @@ class TreeSearch {
                                             .filter(g => g!=-1)
                                             ,ghostpath[i].length-1
                                     )                                       //removeFalses   this remain at least one
-                            newghostpaths.push([...ghostpath[i].filter((g,I) => I>0 && I<=index) ,newpos ])
+                            newghostpaths.push([...ghostpath[i].filter((g,I) => (I>0 || node.ghosts[i][1]>1 || g.length>12) && I<=index) ,newpos ])
                         } 
                         if(node.ghosts[i].length==0)   //This piece of code needs to be really tested
                             throw new Error('WHY??')
@@ -138,17 +166,14 @@ class TreeSearch {
                     let boost = newposS in this.boost
 
                     let newghosts = node.ghosts
-                                    .map((g,i) => [newghostpaths.length>0 ? newghostpaths[i][0] : g[0], boost ? 30 : Math.max(g[1]-1,0) ])
+                                    .map((g,i) => [newghostpaths.length>0 ? newghostpaths[i][0] : g[0], boost ? 30 : renew[i] ? 0 : Math.max(g[1]-1,0) ])
                   
                     let dangerArea = newghosts.filter(g => g[1]<=0).map(g => g[0].toS())
                     
-                  /*   console.log('ghosts',node.ghosts)
-                    console.log(newsize,'->',newpos,'From-to\n',ghostpath,'--',newghostpaths)
-                    console.log('After Enter danger area',dangerArea)
-                    console.log('FORMED PATH',this.ghostpath) */
+           
 
                     if(!(dangerArea.includes(newposS))) {
-                       let rw = 0
+                       
                         
                      
                         //ADD LAST BOOST!!!
@@ -159,10 +184,11 @@ class TreeSearch {
                        if(boost) { 
                             node.newpath = true
                             let dist = newghostpaths.map(g=> g.length-1)
-                            let newrw = calcboost(dist,this.level,3,this.nghost,lastboost)  //need live variables
-                            rw += (newrw>0 ? 1 : -1)*Math.sqrt(Math.abs(newrw))*200
+                            let newrw = calcboost(dist,this.level,this.lives,this.nghost,lastboost,this.step,this.laststep)  //need live variables
                             //rw += (this.nghost*2 - newghostpaths.map(g=> g.length>5 ? g.length : Math.sqrt(g.length)).reduce((a,b) => a + b,0))*200
-                            if(lastboost!='')return;
+                            if(lastboost!='' || (!newrw && this.lives==3)) return
+                            rw += newrw ? 1e5/(10+newsize) : -1e5/(10+newsize) 
+
                        } 
                        //console.log('path so far:',node.path)
                       
@@ -181,7 +207,7 @@ class TreeSearch {
                                                     dangerArea                 //dangerArea
                                                 )  
                         
-                        if(bestpath.rw + bestpath.size<=newnode.rw + newnode.size) bestpath = newnode
+                        if(bestpath.rw + bestpath.size<=newnode.rw + newnode.size || (bestpath.size<5 && newsize==5)) bestpath = newnode
                         count[0]++;
                         nodes.push(newnode)                    
                         visited.add(newposS)
@@ -209,15 +235,6 @@ class TreeSearch {
     }
 
 
-
-    updateGlayers(forbiden) {
-        let glayers = this.glayers;
-        for(let f in forbiden) {
-            let layer = forbiden[f];
-            if(layer>this.ghmoves) continue;
-            glayers[layer][f] = 0; 
-        }
-    }
 
     generateAreas() { 
         let start = Number(new Date())
@@ -256,45 +273,6 @@ class TreeSearch {
         br.boostmap = boostmap
     }
 
-    ghostsurrondings() { 
-        let start = Number(new Date())
-        let actions = [[1,0],[-1,0],[0,-1],[0,1]]
-        const br = this.board
-        let forbiden = {};
-        let ghosts = this.ghosts;
-        let ghostbait = {};
-        for(let i=0; i<this.ghostlist.length;i++) {
-            let garr = this.ghostlist[i]
-            let g = garr.toS()
-            let nodes = [new FastNodeSize(garr,null)];
-            let visited = new Set([g])
-            if(ghosts[g]<=0) {
-                while(nodes.length>0) {
-                    let node = nodes.shift()
-                    actions.forEach(p => {
-                        let newsize = node.size+1;
-                        let newpos = br.pos[node.state.toS()+','+p.toS()];
-                        let newposS = newpos.toS();
-                        if(!visited.has(newposS) && newsize<8) {
-                            let newnode = new FastNodeSize(newpos,node,newsize)                          
-                            nodes.push(newnode);
-                            visited.add(newposS);
-                            let value = 32>>Math.abs(newsize-4);
-                            ghostbait[newposS] = newposS in ghostbait ? value+ghostbait[newposS] :value;
-                                                        
-                            if(newposS in ghosts)   //refactor with no function
-                                createForbidenPath(newnode.path ,forbiden)
-                            
-                        }
-                    }) 
-                }
-            }
-            
-        }
-        this.updateGlayers(forbiden)
-        console.log('took',Number(new Date())-start,'ms')
-        return ghostbait
-    }
 
 
     updateghostlayer(initial) {  //call number 0
@@ -307,12 +285,9 @@ class TreeSearch {
         let ghosts = this.ghosts;
         let ghostlist = this.ghostlist;
         let freemoves = this.freemoves;
-        let layers = []
         let actions = [[1,0],[-1,0],[0,-1],[0,1]]
         let dist=Array(this.nghost).fill(0)
         let excludedghosts = []
-        let notrestrictedcount = 0;
-        let restrictedcount = 0;
         while(nodes.length>0) {
             let node = nodes.shift()
 
@@ -332,12 +307,12 @@ class TreeSearch {
                             .map((g,i) => [g,freemoves[i],i])
                 
                 let notrestricted = indexes 
-                    .filter(g => (this.level==0 || pathlen<=2 || freemoves[g[2]].toS()!=ghostnextmove) && g[0].equal(node.state))
+                    .filter(g => (true || freemoves[g[2]].toS()!=ghostnextmove) && g[0].equal(node.state))
                 
                 let restricted = indexes 
-                    .filter(g => this.level!=0 && pathlen>2 && freemoves[g[2]].toS()==ghostnextmove && g[0].equal(node.state))
+                    .filter(g => false && freemoves[g[2]].toS()==ghostnextmove && g[0].equal(node.state))
 
-                restrictedcount
+                
                      
                 start = Number(new Date())
                    
@@ -347,7 +322,7 @@ class TreeSearch {
                         this.ghostpath[res[2]] = node.invertedpath
                         dist[res[2]] = pathlen 
                         node.delete = true
-                        restrictedcount++;
+                    
                     }                   
                 })         
 
@@ -355,9 +330,8 @@ class TreeSearch {
                     if(!excludedghosts.includes(nres[2]))  {  //check for repeated indexes 
                         excludedghosts.push(nres[2])
                         this.ghostpath[nres[2]] = node.invertedpath
-                        layers.push(node.layers(ghosts[node.state],this.ghmoves));
                         dist[nres[2]] = pathlen 
-                        notrestrictedcount++;
+                       
                     }                   
                 })              
     
@@ -382,22 +356,6 @@ class TreeSearch {
             if(node.delete)
                 delete visited[node.state.toS()]
         }
-        this.newglayers = visited
-        let result = Array(this.ghmoves).fill(0).map(m => ({}))
-        layers.forEach(layer => {
-            layer.forEach((a,i) => {
-                result[i][a[0].toS()] = a[1]
-            })
-        })
-        result = [ghosts].concat(result)
-
-        for(let i =1;i<result.length;i++) {
-            result[i] = {...result[i], ...result[i-1] }    
-        }
-        this.glayers = result;
-        //console.log('this.path',this.ghostpath)
-        //if(notrestrictedcount!=this.nghost) throw new Error('Problem found '+restrictedcount)
-        
         return dist.map(g => g==0 ? br.width+br.height : g)
     }
 

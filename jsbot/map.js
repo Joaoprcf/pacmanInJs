@@ -50,15 +50,17 @@ class Board {
             })
             
         }        
+        this.gspawns = data.filter(p => p[1]==GSPAWN) //.toSpawnMap()
+        
+        this.onespawn = this.gspawns[0][0]
         this.gspawns = data.filter(p => p[1]==GSPAWN).toSpawnMap()
-        
-        
-
         let st = new TreeSearch(this, {
             ghosts: {},
             boost: this.boost.toMap(),
             ghostlist: [] 
         })
+        this.pathsfromSpam = st.ghostspam(this.onespawn)
+
 
         st.generateAreas()
 

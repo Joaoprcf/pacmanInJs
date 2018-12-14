@@ -5,16 +5,16 @@ require("../array")
 function calc(dist,level,lives,boosts,lastboost) {
 
     const nghost = dist.length
-    const visibility = [2,4,8,8][level]
+    const visibility = [3,4,7,6][level]
 
-    const closingvalue = dist.map(g => g>visibility ? 0 : (visibility*2-g+1)/(visibility*2)  ).reduce((a,b) => a + b,0)/nghost
+    const closingvalue = dist.map(g => g>visibility ? 0 : g!=visibility ? 1 : 0.5 ).reduce((a,b) => a + b,0)
     
-    const greedlevel = [3,1.5,1,3][level]
-    const greedlives = [2,1.8,1.6][lives-1]
-    const greedboosts = [3,2.8,2.6,2.4][boosts-1]
-   
+
+    const greedlevel = [1.5,3.5,4,2][level]
+    
+
     if(lastboost!='') return null;
-    return  greedlevel*greedboosts*greedlives*closingvalue;
+    return closingvalue>= Math.min(greedlevel,nghost);
 
 } 
 
@@ -25,45 +25,119 @@ test('Boost process no_lastboost', ()=> {       //zombie dont move!!
     expect(value).toBe(null)
 })
 
-test('Best Reward Possible', ()=> {       //zombie dont move!!          //ghostspawn area
 
-    let value = calc([1],3,1,1,'')
+describe('level 0 test', () => {
 
-    expect(value).toBeCloseTo(18)
+    it('1 ghosts', () => {
 
-    value = calc([1,1,1,1],3,1,1,'')
+        let value = calc([1],0,3,4,'')
 
-    expect(value).toBeCloseTo(18)
+        expect(value).toBe(true)
+
+        value = calc([2],0,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([4],0,3,4,'')
+
+        expect(value).toBe(false)
+    })
+
+    it('2 ghosts', () => {
+
+        let value = calc([1,1],0,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,2],0,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,4],0,3,4,'')
+
+        expect(value).toBe(false)
+    })
+
+
+    it('4 ghosts', () => {
+
+        let value = calc([1,1,1,1],0,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,2,4,4],0,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,3,4,4],0,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,4,4,4],0,3,4,'')
+
+        expect(value).toBe(false)
+    })
+
+
+
 })
 
-test('0 Reward', ()=> {       //zombie dont move!!          //ghostspawn area
 
-    let value = calc([9],2,3,4,'')
+describe('level 1 test', () => {
 
-    expect(value).toBeCloseTo(0)
+    it('1 ghosts', () => {
 
-    value = calc([9,9,9,9],2,3,4,'')
+        let value = calc([1],1,3,4,'')
 
-    expect(value).toBeCloseTo(0)
-})
+        expect(value).toBe(true)
 
-test('Worf it', ()=> {       //zombie dont move!!          //ghostspawn area
+        value = calc([2],1,3,4,'')
 
-    let value = calc([4],1,1,1,'')
-    expect(value).toBeGreaterThan(5)
-    console.log('worf it',value)
-    let value2 = calc([4,4,4,4],1,1,1,'')
-    expect(value2).toBeCloseTo(value)
-    console.log('worf it',value)
-})
+        expect(value).toBe(true)
+
+        value = calc([4],1,3,4,'')
+
+        expect(value).toBe(false)
+    })
+
+    it('2 ghosts', () => {
+
+        let value = calc([1,1],1,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,2],1,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,4],1,3,4,'')
+
+        expect(value).toBe(false)
+    })
 
 
-test('Not Worth it', ()=> {       //zombie dont move!!          //ghostspawn area
+    it('4 ghosts', () => {
 
-    let value = calc([4],1,3,4,'')
-    expect(value).toBeLessThan(4)
+        let value = calc([1,1,1,1],1,3,4,'')
 
-    value = calc([4,4,4,8],2,3,4,'')
-    expect(value).toBeLessThan(4)
-    console.log('v',value)
+        expect(value).toBe(true)
+
+        value = calc([3,3,3,4],1,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([3,3,3,3],1,3,4,'')
+
+        expect(value).toBe(true)
+
+        value = calc([2,3,4,4],1,3,4,'')
+
+        expect(value).toBe(false)
+
+        value = calc([2,2,4,4],1,3,4,'')
+
+        expect(value).toBe(false)
+
+    })
+
 })

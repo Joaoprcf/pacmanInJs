@@ -10,20 +10,6 @@ keyMapping = {
     '0,-1': 'w' 
 }
 
-let keypress = null;
-/* readline.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
-process.stdin.on('keypress', (str, key) => {
-    if (key.ctrl && key.name === 'c') {
-        process.exit(); // eslint-disable-line no-process-exit
-    } else if(key.name != 'b') {
-        keypress = [str,10];
-        console.log(`You pressed the "${str}" key`);
-    } else 
-        keypress = null;
-    
-}); */
-
 
 
 class Brain {
@@ -37,6 +23,7 @@ class Brain {
         this.lastboost = ''
         this.level = 0
         this.lastGhostState = []
+        this.laststep = 0
     }
 
 
@@ -51,9 +38,9 @@ class Brain {
 
 
     processNextMove(state) {
-        let limit = 80
+        let limit = 50
         let deadline = Number(new Date()) + limit
-        let { energy, ghosts, boost, step, pacman, lives, player } = state
+        let { energy, ghosts, boost,pacman , step, lives, player } = state
 
         delete this.board.energy[pacman.toS()];
         energy = energy.toMapOfOnes();
@@ -73,18 +60,21 @@ class Brain {
         debuglastboost('=',this.lastboost)
         
         let ts = new TreeSearch(this.board, {
+            step, 
+            lives,
             boost,
             ghosts,
             ghostarr,
             ghostlist,
             lastghostmoves,
-            level: this.level
+            level: this.level,
+            laststep: this.laststep
         });
    
         let dist = ts.updateghostlayer(pacman)
         this.test = dist
        
-        ts.ghostsurrondings() 
+       
         let path = ts.ghostprediction(pacman,deadline-5,this.lastboost)
         //if(path.length==1) throw new Error('err')
 
@@ -101,6 +91,7 @@ class Brain {
             next = [[1,0],[-1,0],[0,1],[0,-1]].find(a => this.board.nextpos(pacman,a).equal(path[1]))
             if(path[1].toS() in boost) {
                this.lastboost = path[1].toS() 
+               this.laststep = step
                debuglastboost('updating last boost to',this.lastboost)
                
             } 
@@ -113,6 +104,7 @@ class Brain {
         if(deadline < Number(new Date()))
         console.log('time to process:',Number(new Date()) - deadline+limit)
         this.lastGhostState = [...ghostlist]
+        console.log('step',step)
         return {
             cmd: 'key',
             key: keyToPlay,

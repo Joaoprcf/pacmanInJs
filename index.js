@@ -6,7 +6,7 @@ const Brain = require("./jsbot/bot");
 
 
 var client = new WebSocketClient();
-const brain = new Brain('lag') 
+const brain = new Brain('80305') 
 
 
 client.on('connectFailed', function(error) {

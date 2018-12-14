@@ -65,6 +65,15 @@ class FastNode {
         }
         return path;
     }
+    get path() {
+        let path = []
+        let node = this;
+        while(node!=null) {
+            path = [node.state].concat(path)
+            node=node.parent;
+        }
+        return path;
+    }
 }
 
 
