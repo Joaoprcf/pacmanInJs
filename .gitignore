@@ -4,8 +4,6 @@ venv
 
 node_modules
 
-data
-
 requirements.txt
 
 *.md
