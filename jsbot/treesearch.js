@@ -20,12 +20,13 @@ function calcboost(dist,level,lives,boosts,lastboost,step,laststep) {
     const closingvalue = dist.map(g => g>visibility ? 0 : g!=visibility ? 1 : 0.5 ).reduce((a,b) => a + b,0)
     
 
-    let greedlevel = [1.5,3,3.5,2][level]
-    greedlevel = Math.max(1,greedlevel+(lives-3)/2)
-    greedlevel = Math.max(1,greedlevel-(step-laststep)/275)    //dont wait that
-  
-    if(lastboost!='') return null;
+    let greedlevel = [1.5,3,3.5,2.4][level]
+    greedlevel = Math.max(1,greedlevel+(lives-3)/3)
+    greedlevel = Math.max(1,greedlevel-(step-laststep)/290)    //dont wait that
+    console.log('greed',greedlevel)
+    if(lastboost!='') return false;
     console.log(closingvalue>= Math.min(greedlevel,nghost))
+
     return closingvalue>= Math.min(greedlevel,nghost);
 
 } 
@@ -138,7 +139,7 @@ class TreeSearch {
                     for(let i=0; i<this.nghost ; i++) {
                         if(node.ghosts[i][1]>0 && node.ghosts[i][0].equal(newpos)) {
                             newghostpaths.push(br.pathsfromSpam[newposS].path)
-                            rw+=10e4/newsize;
+                            rw+=10e6/(2+newsize);
                             renew[i] =true
                             continue;
                         } 
@@ -186,7 +187,7 @@ class TreeSearch {
                             let newrw = calcboost(dist,this.level,this.lives,this.nghost,lastboost,this.step,this.laststep)  
                             
                             if(lastboost!='' || (!newrw && this.lives==3)) return
-                            rw += newrw ? 1e5/(10+newsize) : -1e5/(10+newsize) 
+                            rw += newrw ? 1e5/(10+newsize) : -1e10/(10+newsize) 
 
                        } 
                     
@@ -206,7 +207,7 @@ class TreeSearch {
                                                     dangerArea                 //dangerArea
                                                 )  
                         
-                        if(bestnode.rw + bestnode.size<=newnode.rw + newnode.size || (bestnode.size<5 && newsize==5)) bestnode = newnode
+                        if(bestnode.rw + bestnode.size<=newnode.rw + newnode.size) bestnode = newnode
                         count[0]++;
                         nodes.push(newnode)                    
                         visited.add(newposS)
