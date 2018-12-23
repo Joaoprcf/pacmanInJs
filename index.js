@@ -1,4 +1,5 @@
 var WebSocketClient = require('websocket').client;
+var config = require("config")
 require("./jsbot/array")
 
 const Brain = require("./jsbot/bot");
@@ -6,7 +7,7 @@ const Brain = require("./jsbot/bot");
 
 
 var client = new WebSocketClient();
-const brain = new Brain('80305') 
+const brain = new Brain(config.get('NAME')) 
 
 
 client.on('connectFailed', function(error) {
@@ -41,5 +42,4 @@ client.on('connect', function(connection) {
 
 
  
-//client.connect('ws://pacman-aulas.ws.atnog.av.it.pt:80/player');
-client.connect('ws://127.0.0.1:8000/player');
+client.connect(`ws://${config.get('SERVER')}:${config.get('PORT')}/player`);
