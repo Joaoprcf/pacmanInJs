@@ -207,7 +207,7 @@ class TreeSearch {
                                                     dangerArea                 //dangerArea
                                                 )  
                         
-                        if(bestnode.rw + bestnode.size<=newnode.rw + newnode.size) bestnode = newnode
+                        if(bestnode.rw + Math.min(bestnode.size,10)<=newnode.rw + Math.min(newnode.size,10)) bestnode = newnode
                         count[0]++;
                         nodes.push(newnode)                    
                         visited.add(newposS)
