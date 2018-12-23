@@ -20,8 +20,8 @@ function calcboost(dist,level,lives,boosts,lastboost,step,laststep) {
     const closingvalue = dist.map(g => g>visibility ? 0 : g!=visibility ? 1 : 0.5 ).reduce((a,b) => a + b,0)
     
 
-    let greedlevel = [1.5,3,3.5,2.4][level]
-    greedlevel = Math.max(1,greedlevel+(lives-3)/3)
+    let greedlevel = [1.5,3,3.5,2.2][level]
+    greedlevel = Math.max(1,greedlevel+(lives-3)/2.5)
     greedlevel = Math.max(1,greedlevel-(step-laststep)/290)    //dont wait that
     console.log('greed',greedlevel)
     if(lastboost!='') return false;
@@ -178,7 +178,7 @@ class TreeSearch {
                      
                         //ADD LAST BOOST!!!
 
-                       newghostpaths.forEach((P,i) => rw+= (newghosts[i][1]>0 && P.length==1 ? 500-newsize+10 : Math.max(0,8-P.length)*Math.max(0,8-P.length)*(boostleft>0 ? (lastboost=='' ? 1 : 0.2  ) : 0))*15/(10+newsize)  )
+                       newghostpaths.forEach((P,i) => rw+= (newghosts[i][1]>0 && P.length==1 ? 500-newsize+10 : Math.max(0,8-P.length)*Math.max(0,8-P.length)*(boostleft>0 ? (lastboost=='' ? 1 : 0.1  ) : 0))*15/(10+newsize)  )
                        
                        
                        if(boost) { 
@@ -194,7 +194,7 @@ class TreeSearch {
                       
                        if(newposS in energy) {
                            debuglastboost(boostmap[newposS][1],'==',lastboost)
-                           rw+= (20+(boostmap[newposS][1]==lastboost)*1000)/newsize
+                           rw+= (200+(boostmap[newposS][1]==lastboost)*5000)/Math.min(newsize+10,20)
                        } 
                      
                        let newnode = new PredictionNode(

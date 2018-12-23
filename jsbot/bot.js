@@ -39,7 +39,7 @@ class Brain {
 
 
     processNextMove(state) {
-        let limit = 65
+        let limit = 80
         let deadline = Number(new Date()) + limit
         let { energy, ghosts, boost,pacman , step, lives, player } = state
         try {
