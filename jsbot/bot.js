@@ -45,7 +45,7 @@ class Brain {
         try {
             delete this.board.energy[pacman.toS()];
         } catch(ex) {
-            process.exit(1);
+            process.exit(0);
         }
         
         energy = energy.toMapOfOnes();
