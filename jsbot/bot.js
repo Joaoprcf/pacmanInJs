@@ -42,8 +42,12 @@ class Brain {
         let limit = 65
         let deadline = Number(new Date()) + limit
         let { energy, ghosts, boost,pacman , step, lives, player } = state
-
-        delete this.board.energy[pacman.toS()];
+        try {
+            delete this.board.energy[pacman.toS()];
+        } catch(ex) {
+            process.exit(1);
+        }
+        
         energy = energy.toMapOfOnes();
         boost = boost.toMap();
         let ghostlist = ghosts.map(i => i[0]);
